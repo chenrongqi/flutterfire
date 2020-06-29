@@ -43,7 +43,7 @@ public class FirebaseCrashlyticsPlugin implements FlutterPlugin, MethodCallHandl
     final MethodChannel channel =
             new MethodChannel(binaryMessenger, "plugins.flutter.io/firebase_crashlytics");
     channel.setMethodCallHandler(new FirebaseCrashlyticsPlugin());
-    
+
     return channel;
   }
 
@@ -108,7 +108,7 @@ public class FirebaseCrashlyticsPlugin implements FlutterPlugin, MethodCallHandl
     } else if (call.method.equals("Crashlytics#isDebuggable")) {
       result.success(false);
     } else if (call.method.equals("Crashlytics#getVersion")) {
-      result.success("firebase");
+      result.success("17.1");
     } else if (call.method.equals("Crashlytics#setUserEmail")) {
       FirebaseCrashlytics.getInstance().setCustomKey("email",(String) call.argument("email"));
       result.success(null);
