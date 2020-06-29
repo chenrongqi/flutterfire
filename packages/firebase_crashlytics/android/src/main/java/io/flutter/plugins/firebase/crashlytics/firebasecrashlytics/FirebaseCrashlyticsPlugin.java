@@ -43,9 +43,7 @@ public class FirebaseCrashlyticsPlugin implements FlutterPlugin, MethodCallHandl
     final MethodChannel channel =
             new MethodChannel(binaryMessenger, "plugins.flutter.io/firebase_crashlytics");
     channel.setMethodCallHandler(new FirebaseCrashlyticsPlugin());
-
-    FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(true);
-
+    
     return channel;
   }
 
