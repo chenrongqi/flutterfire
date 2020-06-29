@@ -18,7 +18,8 @@
   FirebaseCrashlyticsPlugin *instance = [[FirebaseCrashlyticsPlugin alloc] init];
   [registrar addMethodCallDelegate:instance channel:channel];
 
-  [Fabric with:@[ [Crashlytics self] ]];
+  [FIRApp configure];
+
 
   SEL sel = NSSelectorFromString(@"registerLibrary:withVersion:");
   if ([FIRApp respondsToSelector:sel]) {
@@ -46,24 +47,20 @@
       // the log is only written to Crashlytics and not also to the offline log
       // as explained here:
       // https://support.crashlytics.com/knowledgebase/articles/92519-how-do-i-use-logging
-      CLSLog(@"%@", log);
+        [[FIRCrashlytics crashlytics] logWithFormat:@"%@", log];
     }
 
     // Set keys.
     NSArray *keys = call.arguments[@"keys"];
     for (NSDictionary *key in keys) {
       if ([@"int" isEqualToString:key[@"type"]]) {
-        [[Crashlytics sharedInstance] setIntValue:(int)call.arguments[@"value"]
-                                           forKey:call.arguments[@"key"]];
+          [[FIRCrashlytics crashlytics] setCustomValue:@((int)call.arguments[@"value"]) forKey:call.arguments[@"key"]];
       } else if ([@"double" isEqualToString:key[@"type"]]) {
-        [[Crashlytics sharedInstance] setFloatValue:[call.arguments[@"value"] floatValue]
-                                             forKey:call.arguments[@"key"]];
+          [[FIRCrashlytics crashlytics] setCustomValue:@([call.arguments[@"value"] floatValue]) forKey:call.arguments[@"key"]];
       } else if ([@"string" isEqualToString:key[@"type"]]) {
-        [[Crashlytics sharedInstance] setObjectValue:call.arguments[@"value"]
-                                              forKey:call.arguments[@"key"]];
+           [[FIRCrashlytics crashlytics] setCustomValue:call.arguments[@"value"] forKey:call.arguments[@"key"]];
       } else if ([@"boolean" isEqualToString:key[@"type"]]) {
-        [[Crashlytics sharedInstance] setBoolValue:[call.arguments[@"value"] boolValue]
-                                            forKey:call.arguments[@"key"]];
+          [[FIRCrashlytics crashlytics] setCustomValue:@([call.arguments[@"value"] boolValue]) forKey:call.arguments[@"key"]];
       }
     }
 
@@ -71,7 +68,7 @@
     // Crashlytics.
     NSString *information = call.arguments[@"information"];
     if ([information length] != 0) {
-      CLSLog(@"%@", information);
+      [[FIRCrashlytics crashlytics] logWithFormat:@"%@", information];
     }
 
     // Report crash.
@@ -87,37 +84,30 @@
       reason = [NSString stringWithFormat:@"thrown %@", context];
     }
 
-    [[Crashlytics sharedInstance] recordCustomExceptionName:call.arguments[@"exception"]
-                                                     reason:reason
-                                                 frameArray:frames];
+    FIRExceptionModel *model = [[FIRExceptionModel alloc] initWithName:call.arguments[@"exception"] reason:reason];
+      model.stackTrace = errorElements;
+
     result(@"Error reported to Crashlytics.");
   } else if ([@"Crashlytics#isDebuggable" isEqualToString:call.method]) {
-    result([NSNumber numberWithBool:[Crashlytics sharedInstance].debugMode]);
+    result([NSNumber numberWithBool:NO]);
   } else if ([@"Crashlytics#getVersion" isEqualToString:call.method]) {
-    result([Crashlytics sharedInstance].version);
+    result(@"6.23.0");
   } else if ([@"Crashlytics#setUserEmail" isEqualToString:call.method]) {
-    [[Crashlytics sharedInstance] setUserEmail:call.arguments[@"email"]];
+    [[FIRCrashlytics crashlytics] setCustomValue:call.arguments[@"email"] forKey:@"email"];
     result(nil);
   } else if ([@"Crashlytics#setUserName" isEqualToString:call.method]) {
-    [[Crashlytics sharedInstance] setUserName:call.arguments[@"name"]];
+    [[FIRCrashlytics crashlytics] setCustomValue:call.arguments[@"name"] forKey:@"name"];
     result(nil);
   } else if ([@"Crashlytics#setUserIdentifier" isEqualToString:call.method]) {
-    [[Crashlytics sharedInstance] setUserIdentifier:call.arguments[@"identifier"]];
+    [[FIRCrashlytics crashlytics] setUserID:call.arguments[@"identifier"]];
     result(nil);
   } else {
     result(FlutterMethodNotImplemented);
   }
 }
 
-- (CLSStackFrame *)generateFrame:(NSDictionary *)errorElement {
-  CLSStackFrame *frame = [CLSStackFrame stackFrame];
-
-  frame.library = [errorElement valueForKey:@"class"];
-  frame.symbol = [errorElement valueForKey:@"method"];
-  frame.fileName = [errorElement valueForKey:@"file"];
-  frame.lineNumber = [[errorElement valueForKey:@"line"] intValue];
-
-  return frame;
+- (FIRStackFrame *)generateFrame:(NSDictionary *)errorElement {
+  return [FIRStackFrame stackFrameWithSymbol:[errorElement valueForKey:@"method"] file:[errorElement valueForKey:@"file"] line:[[errorElement valueForKey:@"line"] intValue]];
 }
 
 @end
