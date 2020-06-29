@@ -6,8 +6,9 @@ package io.flutter.plugins.firebase.crashlytics.firebasecrashlytics;
 
 import android.content.Context;
 import android.util.Log;
-import com.crashlytics.android.Crashlytics;
-import io.fabric.sdk.android.Fabric;
+
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
+
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.plugin.common.MethodCall;
@@ -40,12 +41,10 @@ public class FirebaseCrashlyticsPlugin implements FlutterPlugin, MethodCallHandl
 
   private static MethodChannel setup(BinaryMessenger binaryMessenger, Context context) {
     final MethodChannel channel =
-        new MethodChannel(binaryMessenger, "plugins.flutter.io/firebase_crashlytics");
+            new MethodChannel(binaryMessenger, "plugins.flutter.io/firebase_crashlytics");
     channel.setMethodCallHandler(new FirebaseCrashlyticsPlugin());
 
-    if (!Fabric.isInitialized()) {
-      Fabric.with(context, new Crashlytics());
-    }
+    FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(true);
 
     return channel;
   }
@@ -61,7 +60,7 @@ public class FirebaseCrashlyticsPlugin implements FlutterPlugin, MethodCallHandl
       // Add logs.
       List<String> logs = call.argument("logs");
       for (String log : logs) {
-        Crashlytics.log(log);
+        FirebaseCrashlytics.getInstance().log(log);
       }
 
       // Set keys.
@@ -69,16 +68,16 @@ public class FirebaseCrashlyticsPlugin implements FlutterPlugin, MethodCallHandl
       for (Map<String, Object> key : keys) {
         switch ((String) key.get("type")) {
           case "int":
-            Crashlytics.setInt((String) key.get("key"), (int) key.get("value"));
+            FirebaseCrashlytics.getInstance().setCustomKey((String) key.get("key"), (int) key.get("value"));
             break;
           case "double":
-            Crashlytics.setDouble((String) key.get("key"), (double) key.get("value"));
+            FirebaseCrashlytics.getInstance().setCustomKey((String) key.get("key"), (double) key.get("value"));
             break;
           case "string":
-            Crashlytics.setString((String) key.get("key"), (String) key.get("value"));
+            FirebaseCrashlytics.getInstance().setCustomKey((String) key.get("key"), (String) key.get("value"));
             break;
           case "boolean":
-            Crashlytics.setBool((String) key.get("key"), (boolean) key.get("value"));
+            FirebaseCrashlytics.getInstance().setCustomKey((String) key.get("key"), (boolean) key.get("value"));
             break;
         }
       }
@@ -96,30 +95,30 @@ public class FirebaseCrashlyticsPlugin implements FlutterPlugin, MethodCallHandl
       }
       exception.setStackTrace(elements.toArray(new StackTraceElement[elements.size()]));
 
-      Crashlytics.setString("exception", (String) call.argument("exception"));
+      FirebaseCrashlytics.getInstance().setCustomKey("exception", (String) call.argument("exception"));
 
       // Set a "reason" (to match iOS) to show where the exception was thrown.
       final String context = call.argument("context");
-      if (context != null) Crashlytics.setString("reason", "thrown " + context);
+      if (context != null) FirebaseCrashlytics.getInstance().setCustomKey("reason", "thrown " + context);
 
       // Log information.
       final String information = call.argument("information");
-      if (information != null && !information.isEmpty()) Crashlytics.log(information);
+      if (information != null && !information.isEmpty()) FirebaseCrashlytics.getInstance().log(information);
 
-      Crashlytics.logException(exception);
+      FirebaseCrashlytics.getInstance().recordException(exception);
       result.success("Error reported to Crashlytics.");
     } else if (call.method.equals("Crashlytics#isDebuggable")) {
-      result.success(Fabric.isDebuggable());
+      result.success(false);
     } else if (call.method.equals("Crashlytics#getVersion")) {
-      result.success(Crashlytics.getInstance().getVersion());
+      result.success("firebase");
     } else if (call.method.equals("Crashlytics#setUserEmail")) {
-      Crashlytics.setUserEmail((String) call.argument("email"));
+      FirebaseCrashlytics.getInstance().setCustomKey("email",(String) call.argument("email"));
       result.success(null);
     } else if (call.method.equals("Crashlytics#setUserIdentifier")) {
-      Crashlytics.setUserIdentifier((String) call.argument("identifier"));
+      FirebaseCrashlytics.getInstance().setUserId((String) call.argument("identifier"));
       result.success(null);
     } else if (call.method.equals("Crashlytics#setUserName")) {
-      Crashlytics.setUserName((String) call.argument("name"));
+      FirebaseCrashlytics.getInstance().setCustomKey("name",(String) call.argument("name"));
       result.success(null);
     } else {
       result.notImplemented();
@@ -140,7 +139,7 @@ public class FirebaseCrashlyticsPlugin implements FlutterPlugin, MethodCallHandl
       String methodName = errorElement.get("method");
 
       return new StackTraceElement(
-          className == null ? "" : className, methodName, fileName, Integer.parseInt(lineNumber));
+              className == null ? "" : className, methodName, fileName, Integer.parseInt(lineNumber));
     } catch (Exception e) {
       Log.e(TAG, "Unable to generate stack trace element from Dart side error.");
       return null;
